@@ -15,8 +15,8 @@ export default function RootLayout({
 }>) {
   return (
     <ClerkProvider>
-      <html lang="en">
-        <body className="bg-[#f8fafc] min-h-screen" style={{ fontFamily: "'Satoshi', sans-serif" }}>
+      <html lang="en" className="dark">
+        <body className="bg-black min-h-screen text-white antialiased" style={{ fontFamily: "'Satoshi', sans-serif" }}>
           <ClientLayout>{children}</ClientLayout>
         </body>
       </html>

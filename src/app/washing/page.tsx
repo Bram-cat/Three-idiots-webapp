@@ -1,22 +1,25 @@
 "use client";
 
 import WashingMachine from "@/components/WashingMachine";
+import { Card, CardContent } from "@/components/ui/card";
 
 export default function WashingPage() {
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-[#00171f]">Washing Machine</h1>
+      <h1 className="text-2xl font-bold text-white">Laundry</h1>
       <WashingMachine />
 
       {/* Tips */}
-      <div className="bg-[#00a7e1]/10 rounded-xl p-4 space-y-2 border border-[#00a7e1]/20">
-        <h3 className="font-semibold text-[#003459]">Tips</h3>
-        <ul className="text-sm text-[#007ea7] space-y-1">
-          <li>Set a timer when you start your laundry</li>
-          <li>Others can see when the machine is in use</li>
-          <li>Remove your clothes promptly when done</li>
-        </ul>
-      </div>
+      <Card className="bg-cyan-500/5 border-cyan-500/20">
+        <CardContent className="p-4 space-y-2">
+          <h3 className="font-semibold text-white">Tips</h3>
+          <ul className="text-sm text-zinc-400 space-y-1">
+            <li>Set a timer when you start your laundry</li>
+            <li>Others can see when the machine is in use</li>
+            <li>Remove your clothes promptly when done</li>
+          </ul>
+        </CardContent>
+      </Card>
     </div>
   );
 }

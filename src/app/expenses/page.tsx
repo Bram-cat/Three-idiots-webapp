@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 import { Expense, getExpenses } from "@/lib/store";
 import ExpenseForm from "@/components/ExpenseForm";
 import ExpenseList from "@/components/ExpenseList";
+import { Button } from "@/components/ui/button";
+import { Plus, X } from "lucide-react";
 
 export default function ExpensesPage() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
@@ -29,7 +31,7 @@ export default function ExpensesPage() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[50vh]">
-        <div className="w-12 h-12 border-4 border-[#00a7e1] border-t-transparent rounded-full animate-spin" />
+        <div className="w-12 h-12 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -38,17 +40,27 @@ export default function ExpensesPage() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-[#00171f]">Expenses</h1>
-        <button
+        <h1 className="text-2xl font-bold text-white">Expenses</h1>
+        <Button
           onClick={() => setShowForm(!showForm)}
-          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+          className={
             showForm
-              ? "bg-gray-200 text-[#003459]"
-              : "bg-[#00a7e1] text-white hover:bg-[#007ea7]"
-          }`}
+              ? "bg-zinc-800 text-white hover:bg-zinc-700"
+              : "bg-cyan-500 text-black hover:bg-cyan-400"
+          }
         >
-          {showForm ? "Cancel" : "+ Add Expense"}
-        </button>
+          {showForm ? (
+            <>
+              <X className="w-4 h-4 mr-2" />
+              Cancel
+            </>
+          ) : (
+            <>
+              <Plus className="w-4 h-4 mr-2" />
+              Add Expense
+            </>
+          )}
+        </Button>
       </div>
 
       {/* Add Expense Form */}
@@ -67,15 +79,15 @@ export default function ExpensesPage() {
           <button
             key={f}
             onClick={() => setFilter(f)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors capitalize ${
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all capitalize ${
               filter === f
-                ? "bg-[#00a7e1] text-white"
-                : "bg-white text-[#003459] hover:bg-[#00a7e1]/10 border border-[#007ea7]/20"
+                ? "bg-cyan-500 text-black"
+                : "bg-zinc-900 text-zinc-300 hover:bg-zinc-800 border border-zinc-800"
             }`}
           >
             {f}
-            {f === "pending" && (
-              <span className="ml-1 bg-[#003459] text-white text-xs px-1.5 py-0.5 rounded-full">
+            {f === "pending" && expenses.filter((e) => e.status === "pending").length > 0 && (
+              <span className="ml-2 bg-zinc-800 text-cyan-400 text-xs px-1.5 py-0.5 rounded-full">
                 {expenses.filter((e) => e.status === "pending").length}
               </span>
             )}

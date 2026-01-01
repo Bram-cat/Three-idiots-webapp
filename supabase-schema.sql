@@ -46,6 +46,19 @@ CREATE TABLE washing_machine (
 -- Insert default washing machine row
 INSERT INTO washing_machine (id, is_active) VALUES ('1', false) ON CONFLICT (id) DO NOTHING;
 
+-- Dryer machine table
+CREATE TABLE dryer_machine (
+  id TEXT PRIMARY KEY DEFAULT '2',
+  user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+  user_name TEXT,
+  start_time TIMESTAMP WITH TIME ZONE,
+  end_time TIMESTAMP WITH TIME ZONE,
+  is_active BOOLEAN DEFAULT false
+);
+
+-- Insert default dryer row
+INSERT INTO dryer_machine (id, is_active) VALUES ('2', false) ON CONFLICT (id) DO NOTHING;
+
 -- Parking spots table
 CREATE TABLE parking_spots (
   id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
@@ -64,12 +77,24 @@ INSERT INTO parking_spots (id, spot_number, is_occupied) VALUES
   (uuid_generate_v4(), 4, false)
 ON CONFLICT (spot_number) DO NOTHING;
 
+-- Chat messages table
+CREATE TABLE chat_messages (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  user_name TEXT NOT NULL,
+  message TEXT,
+  image_url TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- Enable Row Level Security
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE expenses ENABLE ROW LEVEL SECURITY;
 ALTER TABLE expense_approvals ENABLE ROW LEVEL SECURITY;
 ALTER TABLE washing_machine ENABLE ROW LEVEL SECURITY;
+ALTER TABLE dryer_machine ENABLE ROW LEVEL SECURITY;
 ALTER TABLE parking_spots ENABLE ROW LEVEL SECURITY;
+ALTER TABLE chat_messages ENABLE ROW LEVEL SECURITY;
 
 -- Policies for users table
 CREATE POLICY "Users are viewable by everyone" ON users FOR SELECT USING (true);
@@ -89,6 +114,18 @@ CREATE POLICY "Washing machine is viewable by everyone" ON washing_machine FOR S
 CREATE POLICY "Anyone can update washing machine" ON washing_machine FOR UPDATE USING (true);
 CREATE POLICY "Anyone can insert washing machine" ON washing_machine FOR INSERT WITH CHECK (true);
 
+-- Policies for dryer_machine table
+CREATE POLICY "Dryer machine is viewable by everyone" ON dryer_machine FOR SELECT USING (true);
+CREATE POLICY "Anyone can update dryer machine" ON dryer_machine FOR UPDATE USING (true);
+CREATE POLICY "Anyone can insert dryer machine" ON dryer_machine FOR INSERT WITH CHECK (true);
+
 -- Policies for parking_spots table
 CREATE POLICY "Parking spots are viewable by everyone" ON parking_spots FOR SELECT USING (true);
 CREATE POLICY "Anyone can update parking spots" ON parking_spots FOR UPDATE USING (true);
+
+-- Policies for chat_messages table
+CREATE POLICY "Chat messages are viewable by everyone" ON chat_messages FOR SELECT USING (true);
+CREATE POLICY "Anyone can insert chat messages" ON chat_messages FOR INSERT WITH CHECK (true);
+
+-- Enable realtime for chat messages
+ALTER PUBLICATION supabase_realtime ADD TABLE chat_messages;

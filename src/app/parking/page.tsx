@@ -1,27 +1,30 @@
 "use client";
 
 import ParkingSpots from "@/components/ParkingSpots";
+import { Card, CardContent } from "@/components/ui/card";
 
 export default function ParkingPage() {
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-[#00171f]">Parking</h1>
+      <h1 className="text-2xl font-bold text-white">Parking</h1>
       <ParkingSpots />
 
       {/* Legend */}
-      <div className="bg-white rounded-xl shadow-sm p-4 border border-[#007ea7]/10">
-        <h3 className="font-semibold text-[#00171f] mb-3">Legend</h3>
-        <div className="flex gap-6 text-sm">
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 bg-green-400 rounded-full" />
-            <span className="text-[#007ea7]">Available</span>
+      <Card className="bg-zinc-900/50 border-zinc-800">
+        <CardContent className="p-4">
+          <h3 className="font-semibold text-white mb-3">Legend</h3>
+          <div className="flex gap-6 text-sm">
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 bg-green-400 rounded-full" />
+              <span className="text-zinc-400">Available</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 bg-red-400 rounded-full" />
+              <span className="text-zinc-400">Occupied</span>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 bg-red-400 rounded-full" />
-            <span className="text-[#007ea7]">Occupied</span>
-          </div>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

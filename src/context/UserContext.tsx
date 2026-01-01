@@ -8,7 +8,7 @@ import UserSelection from "@/components/UserSelection";
 interface UserContextType {
   oderId: string | null;
   userName: string | null;
-  userAvatar: string;
+  userImage: string;
   userColor: string;
   isLoading: boolean;
 }
@@ -16,7 +16,7 @@ interface UserContextType {
 const UserContext = createContext<UserContextType>({
   oderId: null,
   userName: null,
-  userAvatar: "👤",
+  userImage: "/images/default.png",
   userColor: "bg-gray-500",
   isLoading: true,
 });
@@ -57,10 +57,9 @@ export function UserProvider({ children }: { children: ReactNode }) {
     loadUser();
   }, [user, clerkLoaded]);
 
-  const handleSelectionComplete = async (name: string) => {
+  const handleSelectionComplete = async () => {
     if (!user) return;
 
-    // Reload user data
     const dbUser = await getCurrentUser(user.id);
     if (dbUser) {
       setUserId(dbUser.oderId);
@@ -71,9 +70,9 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[#00171f] flex items-center justify-center">
+      <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-[#00a7e1] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <div className="w-16 h-16 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
           <p className="text-white font-medium">Loading...</p>
         </div>
       </div>
@@ -84,11 +83,11 @@ export function UserProvider({ children }: { children: ReactNode }) {
     return <UserSelection onComplete={handleSelectionComplete} />;
   }
 
-  const userAvatar = userName ? roommateConfig[userName]?.avatar || "👤" : "👤";
+  const userImage = userName ? roommateConfig[userName]?.image || "/images/default.png" : "/images/default.png";
   const userColor = userName ? roommateConfig[userName]?.color || "bg-gray-500" : "bg-gray-500";
 
   return (
-    <UserContext.Provider value={{ oderId, userName, userAvatar, userColor, isLoading }}>
+    <UserContext.Provider value={{ oderId, userName, userImage, userColor, isLoading }}>
       {children}
     </UserContext.Provider>
   );

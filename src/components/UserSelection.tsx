@@ -1,8 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useUser } from "@clerk/nextjs";
 import { supabase } from "@/lib/supabase";
+import { getTakenNames, roommateConfig } from "@/lib/store";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import Image from "next/image";
 
 type RoommateName = "Ram" | "Munna" | "Suriya" | "Kaushik";
 
@@ -30,15 +35,8 @@ const securityQuestions: Record<RoommateName, SecurityQuestion> = {
   },
 };
 
-const roommateColors: Record<RoommateName, string> = {
-  Ram: "bg-[#00a7e1]",
-  Munna: "bg-[#007ea7]",
-  Suriya: "bg-[#003459]",
-  Kaushik: "bg-[#00171f]",
-};
-
 interface UserSelectionProps {
-  onComplete: (name: RoommateName) => void;
+  onComplete: () => void;
 }
 
 export default function UserSelection({ onComplete }: UserSelectionProps) {
@@ -47,6 +45,21 @@ export default function UserSelection({ onComplete }: UserSelectionProps) {
   const [answer, setAnswer] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [takenNames, setTakenNames] = useState<string[]>([]);
+  const [loadingNames, setLoadingNames] = useState(true);
+
+  useEffect(() => {
+    async function loadTakenNames() {
+      const names = await getTakenNames();
+      setTakenNames(names);
+      setLoadingNames(false);
+    }
+    loadTakenNames();
+  }, []);
+
+  const availableNames = (Object.keys(securityQuestions) as RoommateName[]).filter(
+    (name) => !takenNames.includes(name)
+  );
 
   const handleUserSelect = (name: RoommateName) => {
     setSelectedUser(name);
@@ -68,7 +81,6 @@ export default function UserSelection({ onComplete }: UserSelectionProps) {
 
     setIsLoading(true);
     try {
-      // Save to Supabase
       const { error: dbError } = await supabase
         .from("users")
         .insert({
@@ -83,7 +95,7 @@ export default function UserSelection({ onComplete }: UserSelectionProps) {
         return;
       }
 
-      onComplete(selectedUser);
+      onComplete();
     } catch (err) {
       console.error("Error:", err);
       setError("Something went wrong. Please try again.");
@@ -91,82 +103,134 @@ export default function UserSelection({ onComplete }: UserSelectionProps) {
     }
   };
 
-  return (
-    <div className="min-h-screen bg-[#00171f] flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8">
-        <h1 className="text-2xl font-bold text-[#00171f] text-center mb-2">
-          Welcome to Three Idiots
-        </h1>
-        <p className="text-[#007ea7] text-center mb-8">
-          Select your identity to continue
-        </p>
-
-        {!selectedUser ? (
-          <div className="grid grid-cols-2 gap-4">
-            {(Object.keys(securityQuestions) as RoommateName[]).map((name) => (
-              <button
-                key={name}
-                onClick={() => handleUserSelect(name)}
-                className={`${roommateColors[name]} text-white py-6 px-4 rounded-xl font-semibold text-lg transition-all hover:scale-105 hover:shadow-lg`}
-              >
-                {name}
-              </button>
-            ))}
-          </div>
-        ) : (
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="text-center">
-              <div
-                className={`${roommateColors[selectedUser]} text-white py-3 px-6 rounded-xl font-semibold text-xl inline-block mb-4`}
-              >
-                {selectedUser}
-              </div>
-            </div>
-
-            <div className="bg-[#f0f9ff] border border-[#00a7e1] rounded-xl p-4">
-              <p className="text-[#003459] font-medium mb-2">Security Question:</p>
-              <p
-                className="text-[#00171f] no-select"
-                style={{ userSelect: 'none', WebkitUserSelect: 'none' }}
-                onCopy={(e) => e.preventDefault()}
-                onCut={(e) => e.preventDefault()}
-              >
-                {securityQuestions[selectedUser].question}
-              </p>
-            </div>
-
-            <input
-              type="text"
-              value={answer}
-              onChange={(e) => setAnswer(e.target.value)}
-              placeholder="Your answer..."
-              className="w-full px-4 py-3 border-2 border-[#007ea7] rounded-xl focus:ring-2 focus:ring-[#00a7e1] focus:border-transparent outline-none"
-              autoComplete="off"
-            />
-
-            {error && (
-              <p className="text-red-500 text-center font-medium">{error}</p>
-            )}
-
-            <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={() => setSelectedUser(null)}
-                className="flex-1 px-4 py-3 border-2 border-[#007ea7] text-[#007ea7] rounded-xl font-medium hover:bg-[#f0f9ff] transition-colors"
-              >
-                Back
-              </button>
-              <button
-                type="submit"
-                disabled={isLoading || !answer.trim()}
-                className="flex-1 px-4 py-3 bg-[#00a7e1] text-white rounded-xl font-medium hover:bg-[#007ea7] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isLoading ? "Verifying..." : "Verify"}
-              </button>
-            </div>
-          </form>
-        )}
+  if (loadingNames) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="w-12 h-12 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin" />
       </div>
+    );
+  }
+
+  // All names are taken
+  if (availableNames.length === 0) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center p-4">
+        <Card className="max-w-md w-full bg-zinc-900/50 border-zinc-800">
+          <CardContent className="p-8 text-center">
+            <div className="text-6xl mb-6">🚫</div>
+            <h1 className="text-2xl font-bold text-white mb-4">
+              Oopsies!
+            </h1>
+            <p className="text-zinc-400 text-lg">
+              Seems like you are not part of the group.
+            </p>
+            <p className="text-zinc-500 mt-4 text-sm">
+              Please politely Fuck off
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-black flex items-center justify-center p-4">
+      <Card className="max-w-lg w-full bg-zinc-900/50 border-zinc-800 backdrop-blur-xl">
+        <CardContent className="p-8">
+          <h1 className="text-3xl font-bold text-white text-center mb-2">
+            Three Idiots
+          </h1>
+          <p className="text-zinc-400 text-center mb-8">
+            Select your identity to continue
+          </p>
+
+          {!selectedUser ? (
+            <div className="grid grid-cols-2 gap-4">
+              {availableNames.map((name) => {
+                const config = roommateConfig[name];
+                return (
+                  <button
+                    key={name}
+                    onClick={() => handleUserSelect(name)}
+                    className="group relative overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/50 p-6 transition-all hover:border-cyan-500/50 hover:bg-zinc-800/50"
+                  >
+                    <div className="relative z-10 flex flex-col items-center">
+                      <div className="relative w-20 h-20 mb-3 rounded-full overflow-hidden ring-2 ring-zinc-700 group-hover:ring-cyan-500 transition-all">
+                        <Image
+                          src={config.image}
+                          alt={name}
+                          fill
+                          className="object-cover"
+                        />
+                      </div>
+                      <span className="text-lg font-semibold text-white">{name}</span>
+                    </div>
+                    <div className={`absolute inset-0 bg-gradient-to-br ${config.gradient} opacity-0 group-hover:opacity-10 transition-opacity`} />
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div className="text-center">
+                <div className="relative w-24 h-24 mx-auto mb-4 rounded-full overflow-hidden ring-4 ring-cyan-500">
+                  <Image
+                    src={roommateConfig[selectedUser].image}
+                    alt={selectedUser}
+                    fill
+                    className="object-cover"
+                  />
+                </div>
+                <h2 className="text-xl font-semibold text-white">{selectedUser}</h2>
+              </div>
+
+              <div className="bg-zinc-800/50 rounded-xl p-4 border border-zinc-700">
+                <p className="text-zinc-400 text-sm mb-2">Security Question:</p>
+                <p
+                  className="text-white no-select"
+                  style={{ userSelect: 'none', WebkitUserSelect: 'none' }}
+                  onCopy={(e) => e.preventDefault()}
+                  onCut={(e) => e.preventDefault()}
+                  onContextMenu={(e) => e.preventDefault()}
+                >
+                  {securityQuestions[selectedUser].question}
+                </p>
+              </div>
+
+              <Input
+                type="text"
+                value={answer}
+                onChange={(e) => setAnswer(e.target.value)}
+                placeholder="Your answer..."
+                className="bg-zinc-800/50 border-zinc-700 text-white placeholder:text-zinc-500 focus:border-cyan-500 focus:ring-cyan-500"
+                autoComplete="off"
+              />
+
+              {error && (
+                <p className="text-red-400 text-center text-sm">{error}</p>
+              )}
+
+              <div className="flex gap-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setSelectedUser(null)}
+                  className="flex-1 border-zinc-700 text-white hover:bg-zinc-800"
+                >
+                  Back
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={isLoading || !answer.trim()}
+                  className="flex-1 bg-cyan-500 text-black hover:bg-cyan-400 disabled:opacity-50"
+                >
+                  {isLoading ? "Verifying..." : "Verify"}
+                </Button>
+              </div>
+            </form>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
