@@ -1,65 +1,231 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import { useState, useEffect } from "react";
+import Link from "next/link";
+import {
+  Expense,
+  WashingMachineSlot,
+  ParkingSpot,
+  getExpenses,
+  getWashingMachine,
+  getParkingSpots,
+  getUsers,
+  User,
+  roommateConfig,
+} from "@/lib/store";
+import { useCurrentUser } from "@/context/UserContext";
+
+export default function Dashboard() {
+  const { userName, userAvatar, userColor, oderId } = useCurrentUser();
+  const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [washingMachine, setWashingMachine] = useState<WashingMachineSlot | null>(null);
+  const [parkingSpots, setParkingSpots] = useState<ParkingSpot[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
+  const [timeRemaining, setTimeRemaining] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadData() {
+      const [expensesData, washingData, parkingData, usersData] = await Promise.all([
+        getExpenses(),
+        getWashingMachine(),
+        getParkingSpots(),
+        getUsers(),
+      ]);
+      setExpenses(expensesData);
+      setWashingMachine(washingData);
+      setParkingSpots(parkingData);
+      setUsers(usersData);
+      setIsLoading(false);
+    }
+    loadData();
+  }, []);
+
+  useEffect(() => {
+    if (!washingMachine?.isActive || !washingMachine.endTime) return;
+
+    const updateTimer = () => {
+      const remaining = Math.max(
+        0,
+        Math.floor(
+          (new Date(washingMachine.endTime!).getTime() - Date.now()) / 1000
+        )
+      );
+      setTimeRemaining(remaining);
+    };
+
+    updateTimer();
+    const interval = setInterval(updateTimer, 1000);
+    return () => clearInterval(interval);
+  }, [washingMachine]);
+
+  const pendingExpenses = expenses.filter((e) => e.status === "pending");
+  const pendingApprovals = pendingExpenses.filter(
+    (e) => e.paidBy !== oderId && !e.approvals.includes(oderId || "")
+  );
+  const totalPending = pendingExpenses.reduce((sum, e) => sum + e.amount, 0);
+  const occupiedSpots = parkingSpots.filter((s) => s.isOccupied).length;
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
+  };
+
+  // Show all 4 roommate slots
+  const roommateSlots = ["Ram", "Munna", "Suriya", "Kaushik"];
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[50vh]">
+        <div className="w-12 h-12 border-4 border-[#00a7e1] border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="bg-white rounded-xl shadow-sm p-6 border border-[#007ea7]/10">
+        <div className="flex items-center gap-4">
+          <div
+            className={`w-14 h-14 rounded-full flex items-center justify-center text-2xl ${userColor}`}
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+            {userAvatar}
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-[#00171f]">
+              Hey, {userName}!
+            </h1>
+            <p className="text-[#007ea7]">Here&apos;s your roommate dashboard</p>
+          </div>
         </div>
-      </main>
+      </div>
+
+      {/* Quick Stats */}
+      <div className="grid grid-cols-2 gap-4">
+        {/* Pending Approvals */}
+        <Link
+          href="/expenses"
+          className="bg-white rounded-xl shadow-sm p-4 hover:shadow-md transition-shadow border border-[#007ea7]/10"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-[#00a7e1]/20 rounded-full flex items-center justify-center">
+              <span className="text-xl">⏳</span>
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-[#00171f]">
+                {pendingApprovals.length}
+              </p>
+              <p className="text-sm text-[#007ea7]">Need Your Approval</p>
+            </div>
+          </div>
+        </Link>
+
+        {/* Total Pending */}
+        <Link
+          href="/expenses"
+          className="bg-white rounded-xl shadow-sm p-4 hover:shadow-md transition-shadow border border-[#007ea7]/10"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-[#007ea7]/20 rounded-full flex items-center justify-center">
+              <span className="text-xl">💰</span>
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-[#00171f]">
+                ${totalPending.toFixed(0)}
+              </p>
+              <p className="text-sm text-[#007ea7]">Pending Expenses</p>
+            </div>
+          </div>
+        </Link>
+      </div>
+
+      {/* Washing Machine Status */}
+      <Link
+        href="/washing"
+        className="block bg-white rounded-xl shadow-sm p-4 hover:shadow-md transition-shadow border border-[#007ea7]/10"
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div
+              className={`w-12 h-12 rounded-full flex items-center justify-center text-2xl ${
+                washingMachine?.isActive ? "bg-[#00a7e1]/20 animate-pulse" : "bg-gray-100"
+              }`}
+            >
+              🧺
+            </div>
+            <div>
+              <h3 className="font-semibold text-[#00171f]">Washing Machine</h3>
+              {washingMachine?.isActive ? (
+                <p className="text-sm text-[#00a7e1]">
+                  {washingMachine.userName} is using - {formatTime(timeRemaining)} left
+                </p>
+              ) : (
+                <p className="text-sm text-green-600">Available</p>
+              )}
+            </div>
+          </div>
+          <span className="text-[#007ea7]">→</span>
+        </div>
+      </Link>
+
+      {/* Parking Status */}
+      <Link
+        href="/parking"
+        className="block bg-white rounded-xl shadow-sm p-4 hover:shadow-md transition-shadow border border-[#007ea7]/10"
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center text-2xl">
+              🚗
+            </div>
+            <div>
+              <h3 className="font-semibold text-[#00171f]">Parking Spots</h3>
+              <p className="text-sm text-[#007ea7]">
+                {occupiedSpots}/4 spots occupied
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-1">
+            {parkingSpots.map((spot) => (
+              <div
+                key={spot.id}
+                className={`w-3 h-3 rounded-full ${
+                  spot.isOccupied ? "bg-red-400" : "bg-green-400"
+                }`}
+              />
+            ))}
+          </div>
+        </div>
+      </Link>
+
+      {/* Roommates */}
+      <div className="bg-white rounded-xl shadow-sm p-4 border border-[#007ea7]/10">
+        <h3 className="font-semibold text-[#00171f] mb-3">Roommates</h3>
+        <div className="flex justify-around">
+          {roommateSlots.map((name) => {
+            const registeredUser = users.find((u) => u.name === name);
+            const config = roommateConfig[name];
+            const isCurrentUser = name === userName;
+
+            return (
+              <div key={name} className="text-center">
+                <div
+                  className={`w-12 h-12 mx-auto rounded-full flex items-center justify-center text-xl ${
+                    registeredUser ? config.color : "bg-gray-200"
+                  } ${isCurrentUser ? "ring-2 ring-offset-2 ring-[#00a7e1]" : ""}`}
+                >
+                  {registeredUser ? config.avatar : "❓"}
+                </div>
+                <p className={`text-sm mt-1 ${registeredUser ? "text-[#00171f]" : "text-gray-400"}`}>
+                  {name}
+                </p>
+              </div>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 }
