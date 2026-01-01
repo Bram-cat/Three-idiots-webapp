@@ -420,24 +420,77 @@ export async function sendChatMessage(
   };
 }
 
+export async function editChatMessage(
+  messageId: string,
+  newMessage: string
+): Promise<boolean> {
+  const { error } = await supabase
+    .from("chat_messages")
+    .update({ message: newMessage })
+    .eq("id", messageId);
+
+  return !error;
+}
+
+export async function deleteChatMessage(messageId: string): Promise<boolean> {
+  const { error } = await supabase
+    .from("chat_messages")
+    .delete()
+    .eq("id", messageId);
+
+  return !error;
+}
+
 export function subscribeToChatMessages(
-  callback: (message: ChatMessage) => void
+  callback: (payload: { eventType: string; message: ChatMessage; oldId?: string }) => void
 ) {
   const channel = supabase
-    .channel("chat_messages")
+    .channel("chat_messages_realtime")
     .on(
       "postgres_changes",
-      { event: "INSERT", schema: "public", table: "chat_messages" },
+      { event: "*", schema: "public", table: "chat_messages" },
       (payload) => {
-        const m = payload.new;
-        callback({
-          id: m.id,
-          userId: m.user_id,
-          userName: m.user_name,
-          message: m.message,
-          imageUrl: m.image_url,
-          createdAt: new Date(m.created_at),
-        });
+        if (payload.eventType === "INSERT") {
+          const m = payload.new;
+          callback({
+            eventType: "INSERT",
+            message: {
+              id: m.id,
+              userId: m.user_id,
+              userName: m.user_name,
+              message: m.message,
+              imageUrl: m.image_url,
+              createdAt: new Date(m.created_at),
+            },
+          });
+        } else if (payload.eventType === "UPDATE") {
+          const m = payload.new;
+          callback({
+            eventType: "UPDATE",
+            message: {
+              id: m.id,
+              userId: m.user_id,
+              userName: m.user_name,
+              message: m.message,
+              imageUrl: m.image_url,
+              createdAt: new Date(m.created_at),
+            },
+          });
+        } else if (payload.eventType === "DELETE") {
+          const m = payload.old;
+          callback({
+            eventType: "DELETE",
+            message: {
+              id: m.id,
+              userId: m.user_id,
+              userName: m.user_name,
+              message: m.message || "",
+              imageUrl: m.image_url,
+              createdAt: new Date(m.created_at),
+            },
+            oldId: m.id,
+          });
+        }
       }
     )
     .subscribe();

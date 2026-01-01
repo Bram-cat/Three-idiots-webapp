@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css";
 import ClientLayout from "@/components/ClientLayout";
@@ -6,6 +6,14 @@ import ClientLayout from "@/components/ClientLayout";
 export const metadata: Metadata = {
   title: "Three Idiots",
   description: "Track expenses, washing machine, and parking with roommates",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  themeColor: "#000000",
 };
 
 export default function RootLayout({
@@ -16,7 +24,7 @@ export default function RootLayout({
   return (
     <ClerkProvider>
       <html lang="en" className="dark">
-        <body className="bg-black min-h-screen text-white antialiased" style={{ fontFamily: "'Satoshi', sans-serif" }}>
+        <body className="bg-black min-h-screen text-white antialiased">
           <ClientLayout>{children}</ClientLayout>
         </body>
       </html>

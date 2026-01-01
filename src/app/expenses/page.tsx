@@ -6,6 +6,7 @@ import ExpenseForm from "@/components/ExpenseForm";
 import ExpenseList from "@/components/ExpenseList";
 import { Button } from "@/components/ui/button";
 import { Plus, X } from "lucide-react";
+import { AnimateOnScroll } from "@/hooks/useScrollAnimation";
 
 export default function ExpensesPage() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
@@ -39,64 +40,73 @@ export default function ExpensesPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-white">Expenses</h1>
-        <Button
-          onClick={() => setShowForm(!showForm)}
-          className={
-            showForm
-              ? "bg-zinc-800 text-white hover:bg-zinc-700"
-              : "bg-cyan-500 text-black hover:bg-cyan-400"
-          }
-        >
-          {showForm ? (
-            <>
-              <X className="w-4 h-4 mr-2" />
-              Cancel
-            </>
-          ) : (
-            <>
-              <Plus className="w-4 h-4 mr-2" />
-              Add Expense
-            </>
-          )}
-        </Button>
-      </div>
+      <AnimateOnScroll animation="fadeInUp">
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl md:text-3xl font-bold text-white">Expenses</h1>
+          <Button
+            onClick={() => setShowForm(!showForm)}
+            className={`touch-target ${
+              showForm
+                ? "bg-zinc-800 text-white hover:bg-zinc-700"
+                : "bg-cyan-500 text-black hover:bg-cyan-400"
+            }`}
+          >
+            {showForm ? (
+              <>
+                <X className="w-4 h-4 mr-2" />
+                Cancel
+              </>
+            ) : (
+              <>
+                <Plus className="w-4 h-4 mr-2" />
+                <span className="hidden sm:inline">Add Expense</span>
+                <span className="sm:hidden">Add</span>
+              </>
+            )}
+          </Button>
+        </div>
+      </AnimateOnScroll>
 
       {/* Add Expense Form */}
       {showForm && (
-        <ExpenseForm
-          onExpenseAdded={() => {
-            loadExpenses();
-            setShowForm(false);
-          }}
-        />
+        <AnimateOnScroll animation="scaleIn">
+          <ExpenseForm
+            onExpenseAdded={() => {
+              loadExpenses();
+              setShowForm(false);
+            }}
+          />
+        </AnimateOnScroll>
       )}
 
       {/* Filter Tabs */}
-      <div className="flex gap-2">
-        {(["all", "pending", "approved"] as const).map((f) => (
-          <button
-            key={f}
-            onClick={() => setFilter(f)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all capitalize ${
-              filter === f
-                ? "bg-cyan-500 text-black"
-                : "bg-zinc-900 text-zinc-300 hover:bg-zinc-800 border border-zinc-800"
-            }`}
-          >
-            {f}
-            {f === "pending" && expenses.filter((e) => e.status === "pending").length > 0 && (
-              <span className="ml-2 bg-zinc-800 text-cyan-400 text-xs px-1.5 py-0.5 rounded-full">
-                {expenses.filter((e) => e.status === "pending").length}
-              </span>
-            )}
-          </button>
-        ))}
-      </div>
+      <AnimateOnScroll animation="fadeInUp" delay={100}>
+        <div className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1 scrollbar-hide">
+          {(["all", "pending", "approved"] as const).map((f) => (
+            <button
+              key={f}
+              onClick={() => setFilter(f)}
+              className={`px-4 py-2.5 rounded-lg text-sm font-medium transition-all capitalize whitespace-nowrap touch-target ${
+                filter === f
+                  ? "bg-cyan-500 text-black"
+                  : "bg-zinc-900 text-zinc-300 hover:bg-zinc-800 border border-zinc-800"
+              }`}
+            >
+              {f}
+              {f === "pending" && expenses.filter((e) => e.status === "pending").length > 0 && (
+                <span className="ml-2 bg-zinc-800 text-cyan-400 text-xs px-1.5 py-0.5 rounded-full">
+                  {expenses.filter((e) => e.status === "pending").length}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+      </AnimateOnScroll>
 
       {/* Expense List */}
-      <ExpenseList expenses={filteredExpenses} onUpdate={loadExpenses} />
+      <AnimateOnScroll animation="fadeInUp" delay={200}>
+        <ExpenseList expenses={filteredExpenses} onUpdate={loadExpenses} />
+      </AnimateOnScroll>
     </div>
   );
 }
