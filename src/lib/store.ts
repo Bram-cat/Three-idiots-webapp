@@ -32,6 +32,9 @@ export interface MachineSlot {
   isActive: boolean;
 }
 
+// Alias for backwards compatibility
+export type WashingMachineSlot = MachineSlot;
+
 export interface ParkingSpot {
   id: string;
   spotNumber: number;
