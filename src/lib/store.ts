@@ -19,6 +19,7 @@ export interface Expense {
   receiptImage?: string;
   createdAt: Date;
   approvals: string[];
+  disapprovals: string[];
   status: "pending" | "approved" | "rejected";
 }
 
@@ -96,7 +97,8 @@ export async function getExpenses(): Promise<Expense[]> {
     .from("expenses")
     .select(`
       *,
-      expense_approvals (user_id)
+      expense_approvals (user_id),
+      expense_disapprovals (user_id)
     `)
     .order("created_at", { ascending: false });
 
@@ -114,12 +116,13 @@ export async function getExpenses(): Promise<Expense[]> {
     receiptImage: e.receipt_image,
     createdAt: new Date(e.created_at),
     approvals: e.expense_approvals?.map((a: { user_id: string }) => a.user_id) || [],
+    disapprovals: e.expense_disapprovals?.map((d: { user_id: string }) => d.user_id) || [],
     status: e.status,
   }));
 }
 
 export async function addExpense(
-  expense: Omit<Expense, "id" | "createdAt" | "approvals" | "status">
+  expense: Omit<Expense, "id" | "createdAt" | "approvals" | "disapprovals" | "status">
 ): Promise<Expense | null> {
   const { data, error } = await supabase
     .from("expenses")
@@ -148,6 +151,7 @@ export async function addExpense(
     receiptImage: data.receipt_image,
     createdAt: new Date(data.created_at),
     approvals: [],
+    disapprovals: [],
     status: data.status,
   };
 }
@@ -156,6 +160,13 @@ export async function approveExpense(
   expenseId: string,
   oderId: string
 ): Promise<boolean> {
+  // Remove any previous disapproval by this user
+  await supabase
+    .from("expense_disapprovals")
+    .delete()
+    .eq("expense_id", expenseId)
+    .eq("user_id", oderId);
+
   const { error: approvalError } = await supabase
     .from("expense_approvals")
     .insert({
@@ -181,6 +192,79 @@ export async function approveExpense(
   }
 
   return true;
+}
+
+export async function disapproveExpense(
+  expenseId: string,
+  oderId: string
+): Promise<boolean> {
+  // Remove any previous approval by this user
+  await supabase
+    .from("expense_approvals")
+    .delete()
+    .eq("expense_id", expenseId)
+    .eq("user_id", oderId);
+
+  const { error: disapprovalError } = await supabase
+    .from("expense_disapprovals")
+    .insert({
+      expense_id: expenseId,
+      user_id: oderId,
+    });
+
+  if (disapprovalError) {
+    console.error("Error disapproving expense:", disapprovalError);
+    return false;
+  }
+
+  // Check if 2 or more people have disapproved
+  const { data: disapprovals } = await supabase
+    .from("expense_disapprovals")
+    .select("id")
+    .eq("expense_id", expenseId);
+
+  if (disapprovals && disapprovals.length >= 2) {
+    await supabase
+      .from("expenses")
+      .update({ status: "rejected" })
+      .eq("id", expenseId);
+  }
+
+  return true;
+}
+
+// Get current month's expenses only
+export async function getCurrentMonthExpenses(): Promise<Expense[]> {
+  const now = new Date();
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  const { data, error } = await supabase
+    .from("expenses")
+    .select(`
+      *,
+      expense_approvals (user_id),
+      expense_disapprovals (user_id)
+    `)
+    .gte("created_at", startOfMonth.toISOString())
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("Error fetching expenses:", error);
+    return [];
+  }
+
+  return (data || []).map((e) => ({
+    id: e.id,
+    description: e.description,
+    amount: e.amount,
+    category: e.category,
+    paidBy: e.paid_by,
+    receiptImage: e.receipt_image,
+    createdAt: new Date(e.created_at),
+    approvals: e.expense_approvals?.map((a: { user_id: string }) => a.user_id) || [],
+    disapprovals: e.expense_disapprovals?.map((d: { user_id: string }) => d.user_id) || [],
+    status: e.status,
+  }));
 }
 
 // Machine (Washer/Dryer) functions

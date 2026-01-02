@@ -1,21 +1,27 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Expense, getExpenses } from "@/lib/store";
+import { Expense, getCurrentMonthExpenses } from "@/lib/store";
 import ExpenseForm from "@/components/ExpenseForm";
 import ExpenseList from "@/components/ExpenseList";
+import ExpenseSummary from "@/components/ExpenseSummary";
 import { Button } from "@/components/ui/button";
-import { Plus, X } from "lucide-react";
+import { Plus, X, Calendar } from "lucide-react";
 import { AnimateOnScroll } from "@/hooks/useScrollAnimation";
 
 export default function ExpensesPage() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [showForm, setShowForm] = useState(false);
-  const [filter, setFilter] = useState<"all" | "pending" | "approved">("all");
+  const [filter, setFilter] = useState<"all" | "pending" | "approved" | "rejected">("all");
   const [isLoading, setIsLoading] = useState(true);
 
+  const currentMonth = new Date().toLocaleDateString("en-US", {
+    month: "long",
+    year: "numeric",
+  });
+
   const loadExpenses = async () => {
-    const data = await getExpenses();
+    const data = await getCurrentMonthExpenses();
     setExpenses(data);
     setIsLoading(false);
   };
@@ -42,7 +48,13 @@ export default function ExpensesPage() {
       {/* Header */}
       <AnimateOnScroll animation="fadeInUp">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl md:text-3xl font-bold text-white">Expenses</h1>
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold text-white">Expenses</h1>
+            <p className="text-sm text-zinc-500 flex items-center gap-1 mt-1">
+              <Calendar className="w-3.5 h-3.5" />
+              {currentMonth}
+            </p>
+          </div>
           <Button
             onClick={() => setShowForm(!showForm)}
             className={`touch-target ${
@@ -79,10 +91,17 @@ export default function ExpensesPage() {
         </AnimateOnScroll>
       )}
 
+      {/* Expense Summary - Only show when not adding */}
+      {!showForm && (
+        <AnimateOnScroll animation="fadeInUp" delay={50}>
+          <ExpenseSummary expenses={expenses} />
+        </AnimateOnScroll>
+      )}
+
       {/* Filter Tabs */}
       <AnimateOnScroll animation="fadeInUp" delay={100}>
         <div className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1 scrollbar-hide">
-          {(["all", "pending", "approved"] as const).map((f) => (
+          {(["all", "pending", "approved", "rejected"] as const).map((f) => (
             <button
               key={f}
               onClick={() => setFilter(f)}
@@ -96,6 +115,11 @@ export default function ExpensesPage() {
               {f === "pending" && expenses.filter((e) => e.status === "pending").length > 0 && (
                 <span className="ml-2 bg-zinc-800 text-cyan-400 text-xs px-1.5 py-0.5 rounded-full">
                   {expenses.filter((e) => e.status === "pending").length}
+                </span>
+              )}
+              {f === "rejected" && expenses.filter((e) => e.status === "rejected").length > 0 && (
+                <span className="ml-2 bg-red-800 text-red-400 text-xs px-1.5 py-0.5 rounded-full">
+                  {expenses.filter((e) => e.status === "rejected").length}
                 </span>
               )}
             </button>

@@ -2,12 +2,12 @@
 
 import { useState, useEffect } from "react";
 import Image from "next/image";
-import { Expense, User, approveExpense, getUsers, roommateConfig } from "@/lib/store";
+import { Expense, User, approveExpense, disapproveExpense, getUsers, roommateConfig } from "@/lib/store";
 import { useCurrentUser } from "@/context/UserContext";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Check, FileText } from "lucide-react";
+import { Check, X, FileText, ThumbsUp, ThumbsDown } from "lucide-react";
 
 interface ExpenseListProps {
   expenses: Expense[];
@@ -18,6 +18,7 @@ export default function ExpenseList({ expenses, onUpdate }: ExpenseListProps) {
   const { oderId } = useCurrentUser();
   const [users, setUsers] = useState<User[]>([]);
   const [approvingId, setApprovingId] = useState<string | null>(null);
+  const [disapprovingId, setDisapprovingId] = useState<string | null>(null);
 
   useEffect(() => {
     getUsers().then(setUsers);
@@ -28,6 +29,14 @@ export default function ExpenseList({ expenses, onUpdate }: ExpenseListProps) {
     setApprovingId(expenseId);
     await approveExpense(expenseId, oderId);
     setApprovingId(null);
+    onUpdate();
+  };
+
+  const handleDisapprove = async (expenseId: string) => {
+    if (!oderId) return;
+    setDisapprovingId(expenseId);
+    await disapproveExpense(expenseId, oderId);
+    setDisapprovingId(null);
     onUpdate();
   };
 
@@ -73,9 +82,16 @@ export default function ExpenseList({ expenses, onUpdate }: ExpenseListProps) {
       );
     }
     return (
-      <Badge className="bg-cyan-500/20 text-cyan-400 border-cyan-500/30">
-        {expense.approvals.length}/3 Approvals
-      </Badge>
+      <div className="flex flex-col items-end gap-1">
+        <Badge className="bg-cyan-500/20 text-cyan-400 border-cyan-500/30">
+          {expense.approvals.length}/3 Approvals
+        </Badge>
+        {expense.disapprovals.length > 0 && (
+          <Badge className="bg-red-500/20 text-red-400 border-red-500/30 text-xs">
+            {expense.disapprovals.length}/2 Rejections
+          </Badge>
+        )}
+      </div>
     );
   };
 
@@ -95,26 +111,30 @@ export default function ExpenseList({ expenses, onUpdate }: ExpenseListProps) {
       {expenses.map((expense) => {
         const paidByDisplay = getUserDisplay(expense.paidBy);
         const hasApproved = expense.approvals.includes(oderId || "");
+        const hasDisapproved = expense.disapprovals.includes(oderId || "");
         const isOwnExpense = expense.paidBy === oderId;
-        const canApprove =
-          !isOwnExpense && !hasApproved && expense.status === "pending";
+        const canVote =
+          !isOwnExpense && !hasApproved && !hasDisapproved && expense.status === "pending";
 
         return (
           <Card key={expense.id} className="bg-zinc-900/50 border-zinc-800">
             <CardContent className="p-4 space-y-4">
               {/* Header */}
-              <div className="flex justify-between items-start">
-                <div className="flex-1">
-                  <h3 className="font-semibold text-white">
+              <div className="flex justify-between items-start gap-2">
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-semibold text-white truncate">
                     {expense.description}
                   </h3>
                   <p className="text-sm text-zinc-500">
                     {expense.category} &bull; {formatDate(expense.createdAt)}
                   </p>
                 </div>
-                <div className="text-right">
+                <div className="text-right flex-shrink-0">
                   <p className="text-xl font-bold text-white">
                     ${expense.amount.toFixed(2)}
+                  </p>
+                  <p className="text-xs text-zinc-500">
+                    ${(expense.amount / 4).toFixed(2)}/person
                   </p>
                   {getStatusBadge(expense)}
                 </div>
@@ -132,8 +152,8 @@ export default function ExpenseList({ expenses, onUpdate }: ExpenseListProps) {
                 </div>
               )}
 
-              {/* Paid By & Approvals */}
-              <div className="flex items-center justify-between">
+              {/* Paid By & Votes */}
+              <div className="flex items-center justify-between flex-wrap gap-2">
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-zinc-500">Paid by:</span>
                   <div className="flex items-center gap-2 bg-zinc-800 px-2 py-1 rounded-full">
@@ -151,51 +171,105 @@ export default function ExpenseList({ expenses, onUpdate }: ExpenseListProps) {
                   </div>
                 </div>
 
-                {/* Approval avatars */}
-                <div className="flex items-center gap-1">
-                  {expense.approvals.map((approverId) => {
-                    const display = getUserDisplay(approverId);
-                    return (
-                      <div
-                        key={approverId}
-                        className="relative w-6 h-6 rounded-full overflow-hidden ring-2 ring-green-500/50"
-                        title={`Approved by ${display.name}`}
-                      >
-                        <Image
-                          src={display.image}
-                          alt={display.name}
-                          fill
-                          className="object-cover"
-                        />
-                        <div className="absolute inset-0 bg-green-500/20 flex items-center justify-center">
-                          <Check className="w-3 h-3 text-green-400" />
-                        </div>
-                      </div>
-                    );
-                  })}
+                {/* Vote avatars */}
+                <div className="flex items-center gap-2">
+                  {/* Approvals */}
+                  {expense.approvals.length > 0 && (
+                    <div className="flex items-center gap-1">
+                      {expense.approvals.map((approverId) => {
+                        const display = getUserDisplay(approverId);
+                        return (
+                          <div
+                            key={approverId}
+                            className="relative w-6 h-6 rounded-full overflow-hidden ring-2 ring-green-500/50"
+                            title={`Approved by ${display.name}`}
+                          >
+                            <Image
+                              src={display.image}
+                              alt={display.name}
+                              fill
+                              className="object-cover"
+                            />
+                            <div className="absolute inset-0 bg-green-500/20 flex items-center justify-center">
+                              <Check className="w-3 h-3 text-green-400" />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* Disapprovals */}
+                  {expense.disapprovals.length > 0 && (
+                    <div className="flex items-center gap-1">
+                      {expense.disapprovals.map((disapproverId) => {
+                        const display = getUserDisplay(disapproverId);
+                        return (
+                          <div
+                            key={disapproverId}
+                            className="relative w-6 h-6 rounded-full overflow-hidden ring-2 ring-red-500/50"
+                            title={`Rejected by ${display.name}`}
+                          >
+                            <Image
+                              src={display.image}
+                              alt={display.name}
+                              fill
+                              className="object-cover"
+                            />
+                            <div className="absolute inset-0 bg-red-500/20 flex items-center justify-center">
+                              <X className="w-3 h-3 text-red-400" />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               </div>
 
-              {/* Approve Button */}
-              {canApprove && (
-                <Button
-                  onClick={() => handleApprove(expense.id)}
-                  disabled={approvingId === expense.id}
-                  className="w-full bg-cyan-500 text-black hover:bg-cyan-400 disabled:opacity-50"
-                >
-                  {approvingId === expense.id ? "Approving..." : "Approve"}
-                </Button>
+              {/* Vote Buttons */}
+              {canVote && (
+                <div className="flex gap-2">
+                  <Button
+                    onClick={() => handleApprove(expense.id)}
+                    disabled={approvingId === expense.id || disapprovingId === expense.id}
+                    className="flex-1 bg-green-500/20 text-green-400 border border-green-500/30 hover:bg-green-500/30"
+                  >
+                    <ThumbsUp className="w-4 h-4 mr-2" />
+                    {approvingId === expense.id ? "..." : "Approve"}
+                  </Button>
+                  <Button
+                    onClick={() => handleDisapprove(expense.id)}
+                    disabled={approvingId === expense.id || disapprovingId === expense.id}
+                    className="flex-1 bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30"
+                  >
+                    <ThumbsDown className="w-4 h-4 mr-2" />
+                    {disapprovingId === expense.id ? "..." : "Reject"}
+                  </Button>
+                </div>
               )}
 
               {hasApproved && expense.status === "pending" && (
                 <p className="text-center text-sm text-green-400">
-                  You approved this
+                  You approved this expense
+                </p>
+              )}
+
+              {hasDisapproved && expense.status === "pending" && (
+                <p className="text-center text-sm text-red-400">
+                  You rejected this expense
                 </p>
               )}
 
               {isOwnExpense && expense.status === "pending" && (
                 <p className="text-center text-sm text-zinc-500">
-                  Waiting for roommates to approve...
+                  Waiting for roommates to vote...
+                </p>
+              )}
+
+              {expense.status === "rejected" && (
+                <p className="text-center text-sm text-red-400">
+                  This expense was rejected by the roommates
                 </p>
               )}
             </CardContent>
